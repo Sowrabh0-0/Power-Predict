@@ -1,0 +1,7 @@
+torch
+torchvision
+torchaudio
+pandas
+openpyxl
+matplotlib
+-f https://download.pytorch.org/whl/cu118
