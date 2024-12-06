@@ -1,0 +1,12 @@
+[
+    {
+        "validation_loss": 6.842079728148704,
+        "mae_sphere": 1.768392574893261,
+        "mae_cylinder": 0.7984187789592969,
+        "sphere_accuracy": 98.23160742510674,
+        "cylinder_accuracy": 99.2015812210407,
+        "overall_accuracy": 98.71659432307372,
+        "date_time": "2024-12-06 19:23:24",
+        "best": true
+    }
+]
