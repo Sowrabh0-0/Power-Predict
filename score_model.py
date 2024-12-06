@@ -6,7 +6,6 @@ import logging
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-
 class ModelScorer:
     def __init__(self, model, dataloader, criterion, score_file='model_scores.json', models_dir='models'):
         self.model = model
@@ -18,6 +17,7 @@ class ModelScorer:
         os.makedirs(self.models_dir, exist_ok=True)
 
     def validate(self):
+        """Run validation and calculate metrics."""
         self.model.eval()
         running_val_loss = 0.0
         total_sphere_error = 0.0
@@ -47,7 +47,7 @@ class ModelScorer:
         mae_sphere = total_sphere_error / total_samples
         mae_cylinder = total_cylinder_error / total_samples
 
-        sphere_accuracy = 100 - mae_sphere  
+        sphere_accuracy = 100 - mae_sphere
         cylinder_accuracy = 100 - mae_cylinder
         overall_accuracy = (sphere_accuracy + cylinder_accuracy) / 2
 
@@ -67,29 +67,47 @@ class ModelScorer:
             "overall_accuracy": overall_accuracy,
         }
 
-    def save_best_model(self, best_metrics):
-        """Save the best model and tag the best metrics in the JSON file."""
-        if best_metrics:
+    def save_epoch_score(self, epoch, metrics):
+        """Save metrics for each epoch to the JSON file."""
+        metrics["epoch"] = epoch
+        metrics["date_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        metrics["best"] = False  
+
+        try:
+            if not os.path.exists(self.score_file):
+                with open(self.score_file, 'w') as f:
+                    json.dump([metrics], f, indent=4)
+            else:
+                with open(self.score_file, 'r+') as f:
+                    data = json.load(f)
+                    data.append(metrics)
+                    f.seek(0)
+                    json.dump(data, f, indent=4)
+        except Exception as e:
+            logging.error(f"Failed to save epoch metrics: {e}")
+
+    def finalize_best_score(self):
+        """Determine the best score and save the best model."""
+        try:
+            if not os.path.exists(self.score_file):
+                logging.warning("Score file does not exist. No best score to finalize.")
+                return
+
+            with open(self.score_file, 'r+') as f:
+                data = json.load(f)
+
+                best_entry = min(data, key=lambda x: x["validation_loss"])
+                for entry in data:
+                    entry["best"] = entry == best_entry
+
+                f.seek(0)
+                json.dump(data, f, indent=4)
+                f.truncate()
+
             timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            model_path = os.path.join(self.models_dir, f"best_model_{timestamp}.pth")
+            best_model_path = os.path.join(self.models_dir, f"best_model_{timestamp}.pth")
+            torch.save(self.model.state_dict(), best_model_path)
+            logging.info(f"Best model saved to {best_model_path}")
 
-            torch.save(self.model.state_dict(), model_path)
-            logging.info(f"Best model saved to {model_path}")
-
-            best_metrics["date_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            best_metrics["best"] = True
-
-            try:
-                if not os.path.exists(self.score_file):
-                    with open(self.score_file, 'w') as f:
-                        json.dump([best_metrics], f, indent=4)
-                else:
-                    with open(self.score_file, 'r+') as f:
-                        data = json.load(f)
-                        for entry in data:
-                            entry["best"] = False  
-                        data.append(best_metrics)
-                        f.seek(0)
-                        json.dump(data, f, indent=4)
-            except Exception as e:
-                logging.error(f"Failed to save best metrics: {e}")
+        except Exception as e:
+            logging.error(f"Failed to finalize best score: {e}")
