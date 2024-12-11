@@ -7,4 +7,5 @@
 env/
 venv/
 models/
+custom_models/
 __pycache__/

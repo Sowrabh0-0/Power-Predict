@@ -56,9 +56,10 @@ class CustomCNN(nn.Module):
         )
 
     def forward(self, x):
-        x = self.features(x)
-        x = torch.flatten(x, 1)
-        x = self.classifier(x)
+        with torch.amp.autocast('cuda'):
+            x = self.features(x)
+            x = torch.flatten(x, 1)
+            x = self.classifier(x)
         return x
 
 class ModelTrainer:
@@ -73,6 +74,13 @@ class ModelTrainer:
         input_size = (sample_image.shape[1], sample_image.shape[2])
         
         self.model = self.initialize_model(input_size)
+        
+        # Ensure model and data are in float32
+        self.model = self.model.float()
+        
+        # Use automatic mixed precision
+        self.scaler = torch.cuda.amp.GradScaler()
+        
         self.criterion, self.optimizer = self.get_loss_and_optimizer()
         self.best_metrics = None
 
@@ -90,9 +98,10 @@ class ModelTrainer:
         total_loss = 0.0
         with torch.no_grad():
             for images, spheres, cylinders in self.dataloader:
-                images = images.to(device)
-                spheres = spheres.to(device).view(-1)
-                cylinders = cylinders.to(device).view(-1)
+                # Ensure everything is float32
+                images = images.float().to(device)
+                spheres = spheres.float().view(-1).to(device)
+                cylinders = cylinders.float().view(-1).to(device)
 
                 outputs = self.model(images)
                 loss_sphere = self.criterion(outputs[:, 0], spheres)
@@ -123,15 +132,24 @@ class ModelTrainer:
 
             logging.info(f"Starting epoch {epoch + 1}/{epochs}...")
             for i, (images, spheres, cylinders) in enumerate(self.dataloader):
-                images, spheres, cylinders = images.to(device), spheres.to(device).view(-1), cylinders.to(device).view(-1)
+                # Ensure everything is float32
+                images = images.float().to(device)
+                spheres = spheres.float().view(-1).to(device)
+                cylinders = cylinders.float().view(-1).to(device)
 
                 self.optimizer.zero_grad()
-                outputs = self.model(images)
-                loss_sphere = self.criterion(outputs[:, 0], spheres)
-                loss_cylinder = self.criterion(outputs[:, 1], cylinders)
-                loss = loss_sphere + loss_cylinder
-                loss.backward()
-                self.optimizer.step()
+                
+                # Use automatic mixed precision
+                with torch.cuda.amp.autocast():
+                    outputs = self.model(images)
+                    loss_sphere = self.criterion(outputs[:, 0], spheres)
+                    loss_cylinder = self.criterion(outputs[:, 1], cylinders)
+                    loss = loss_sphere + loss_cylinder
+
+                # Scale the loss for mixed precision training
+                self.scaler.scale(loss).backward()
+                self.scaler.step(self.optimizer)
+                self.scaler.update()
 
                 running_loss += loss.item()
 
@@ -147,6 +165,9 @@ class ModelTrainer:
                 self.best_metrics = metrics
 
             scheduler.step()
+            
+            # Clear cuda cache between epochs
+            torch.cuda.empty_cache()
 
         # Save the best model
         if self.best_metrics:

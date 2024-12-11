@@ -5,19 +5,18 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import os
 
+def load_model(model_path, device, input_size=(299, 299)):
+    # Import the CustomCNN class from your custom model
+    from custom_model import CustomCNN
 
-# Load the saved model
-def load_model(model_path, device):
-    from torchvision.models import EfficientNet_B0_Weights, efficientnet_b0
-    model = efficientnet_b0(weights=EfficientNet_B0_Weights.IMAGENET1K_V1)
-    model.classifier[1] = nn.Linear(in_features=model.classifier[1].in_features, out_features=2)
-
-    # Load the model's weights only
-    model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
+    # Initialize the model with the correct input size
+    model = CustomCNN(input_size=input_size)
+    
+    # Load the model's weights
+    model.load_state_dict(torch.load(model_path, map_location=device))
     model.to(device)
     model.eval()  # Set model to evaluation mode
     return model
-
 
 # Preprocessing transformations for grayscale (IR) images
 transform = transforms.Compose([
@@ -27,11 +26,9 @@ transform = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Normalize as for RGB images
 ])
 
-
-# Function to predict sphere and cylinder values
 def predict_image(image_path, model, device):
     image = Image.open(image_path).convert('L')  # Load as grayscale
-    input_image = transform(image).unsqueeze(0).to(device)  # Add batch dimension and move to device
+    input_image = transform(image).unsqueeze(0).float().to(device)  # Add batch dimension, ensure float, and move to device
 
     with torch.no_grad():
         outputs = model(input_image)
@@ -40,17 +37,14 @@ def predict_image(image_path, model, device):
 
     return predicted_sphere, predicted_cylinder
 
-
-# Function to display the image and predictions
 def display_image_with_prediction(image_path, predicted_sphere, predicted_cylinder, eye_type):
     image = Image.open(image_path)
+    plt.figure(figsize=(10, 6))
     plt.imshow(image, cmap='gray')  # Display the image as grayscale
     plt.axis('off')
-    plt.title(f"Predicted Sphere ({eye_type}): {predicted_sphere:.2f}, Cylinder ({eye_type}): {predicted_cylinder:.2f}")
+    plt.title(f"{eye_type} - Predicted Sphere: {predicted_sphere:.2f}, Cylinder: {predicted_cylinder:.2f}")
     plt.show()
 
-
-# Function to load IR images only from folders "1", "2", and "3"
 def load_images_from_directory(directory_path, allowed_folders=['1', '2', '3'],
                                image_extensions=['.jpg', '.jpeg', '.png']):
     images_metadata = []
@@ -71,13 +65,13 @@ def load_images_from_directory(directory_path, allowed_folders=['1', '2', '3'],
                         })
     return images_metadata
 
-
 if __name__ == "__main__":
     # Set device (use GPU if available)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Load the model
-    model_path = "custom_models/custom_model_loss_22.8603.pth"  # Path to the saved model
+    # Update this path to match your saved custom model
+    model_path = "custom_models/custom_model_loss_22.8603.pth"
     model = load_model(model_path, device)
 
     # Directory containing images
