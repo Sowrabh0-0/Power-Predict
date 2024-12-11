@@ -28,7 +28,7 @@ transform = transforms.Compose([
 ])
 
 # Load the Excel file containing refractive error data
-excel_file_path = './Choithram Netralaya Data/acuityvalues.xlsx'
+excel_file_path = '~/Downloads/dataset/ODOCS RED REFLEX DATABASE/Choithram Netralaya Data/acuityvalues.xlsx'
 acuity_data = pd.read_excel(excel_file_path)
 
 # Supported image formats (only jpg and png)
@@ -238,11 +238,13 @@ def validate_model(dataloader, model, criterion):
 
 if __name__ == "__main__":
     torch.multiprocessing.set_start_method('spawn')
-    dataset_path = './Choithram Netralaya Data/Images'
+    dataset_path = '/home/rage/Downloads/dataset/ODOCS RED REFLEX DATABASE/Choithram Netralaya Data/Images'
     images_metadata = load_images_from_directory(dataset_path)
-    mapped_images = map_images_to_acuity(images_metadata, acuity_data)
 
+    mapped_images = map_images_to_acuity(images_metadata, acuity_data)
+    
     valid_mapped_images = validate_data(mapped_images)
+
     dataloader = get_dataloader(valid_mapped_images, batch_size=16, num_workers=6)
 
     model = initialize_model()

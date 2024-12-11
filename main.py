@@ -1,7 +1,8 @@
 import torch
 from torch.utils.data import DataLoader
 from data_pipeline import DataPipeline, RedReflexDataset
-from model_train import ModelTrainer
+# from model_train import ModelTrainer
+from custom_model import ModelTrainer
 import logging
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -16,8 +17,8 @@ if __name__ == "__main__":
     else:
         logging.info("CUDA is not available. Using CPU.")
 
-    excel_file_path = './Choithram Netralaya Data/acuityvalues.xlsx'
-    dataset_path = './Choithram Netralaya Data/Images'
+    excel_file_path = '/home/rage/Downloads/dataset/ODOCS RED REFLEX DATABASE/Choithram Netralaya Data/acuityvalues.xlsx'
+    dataset_path = '/home/rage/Downloads/dataset/ODOCS RED REFLEX DATABASE/Choithram Netralaya Data/Images'
 
     try:
         pipeline = DataPipeline(excel_file_path, dataset_path)
