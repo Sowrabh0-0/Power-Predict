@@ -5,18 +5,20 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import os
 
+
 def load_model(model_path, device, input_size=(299, 299)):
     # Import the CustomCNN class from your custom model
     from custom_model import CustomCNN
 
     # Initialize the model with the correct input size
     model = CustomCNN(input_size=input_size)
-    
+
     # Load the model's weights
     model.load_state_dict(torch.load(model_path, map_location=device))
     model.to(device)
     model.eval()  # Set model to evaluation mode
     return model
+
 
 # Preprocessing transformations for grayscale (IR) images
 transform = transforms.Compose([
@@ -26,9 +28,11 @@ transform = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Normalize as for RGB images
 ])
 
+
 def predict_image(image_path, model, device):
     image = Image.open(image_path).convert('L')  # Load as grayscale
-    input_image = transform(image).unsqueeze(0).float().to(device)  # Add batch dimension, ensure float, and move to device
+    input_image = transform(image).unsqueeze(0).float().to(
+        device)  # Add batch dimension, ensure float, and move to device
 
     with torch.no_grad():
         outputs = model(input_image)
@@ -37,6 +41,7 @@ def predict_image(image_path, model, device):
 
     return predicted_sphere, predicted_cylinder
 
+
 def display_image_with_prediction(image_path, predicted_sphere, predicted_cylinder, eye_type):
     image = Image.open(image_path)
     plt.figure(figsize=(10, 6))
@@ -44,6 +49,7 @@ def display_image_with_prediction(image_path, predicted_sphere, predicted_cylind
     plt.axis('off')
     plt.title(f"{eye_type} - Predicted Sphere: {predicted_sphere:.2f}, Cylinder: {predicted_cylinder:.2f}")
     plt.show()
+
 
 def load_images_from_directory(directory_path, allowed_folders=['1', '2', '3'],
                                image_extensions=['.jpg', '.jpeg', '.png']):
@@ -64,6 +70,7 @@ def load_images_from_directory(directory_path, allowed_folders=['1', '2', '3'],
                             'path': file_path
                         })
     return images_metadata
+
 
 if __name__ == "__main__":
     # Set device (use GPU if available)

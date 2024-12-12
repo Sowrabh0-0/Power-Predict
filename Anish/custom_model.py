@@ -9,10 +9,11 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+
 class CustomCNN(nn.Module):
     def __init__(self, num_classes=2, input_size=(224, 224)):
         super(CustomCNN, self).__init__()
-        
+
         # Dynamic feature extraction to calculate correct input size for linear layer
         def conv2d_size_out(size, kernel_size=3, stride=1, padding=1):
             return (size + 2 * padding - (kernel_size - 1) - 1) // stride + 1
@@ -22,7 +23,7 @@ class CustomCNN(nn.Module):
 
         # Calculate feature map size dynamically
         h, w = input_size
-        
+
         # Convolution and pooling calculations
         h = pool2d_size_out(pool2d_size_out(pool2d_size_out(h)))
         w = pool2d_size_out(pool2d_size_out(pool2d_size_out(w)))
@@ -32,18 +33,18 @@ class CustomCNN(nn.Module):
             nn.BatchNorm2d(32),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=2, stride=2),
-            
+
             nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=2, stride=2),
-            
+
             nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(128),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(kernel_size=2, stride=2)
         )
-        
+
         # Dynamically calculate flattened feature size
         self.feature_size = 128 * h * w
 
@@ -62,25 +63,26 @@ class CustomCNN(nn.Module):
             x = self.classifier(x)
         return x
 
+
 class ModelTrainer:
     def __init__(self, dataloader, score_file='custom_model_scores.json', models_dir='custom_models'):
         self.dataloader = dataloader
         self.models_dir = models_dir
         os.makedirs(models_dir, exist_ok=True)
-        
+
         # Determine input size from first batch
         sample_batch = next(iter(dataloader))
         sample_image = sample_batch[0][0]  # First image in the first batch
         input_size = (sample_image.shape[1], sample_image.shape[2])
-        
+
         self.model = self.initialize_model(input_size)
-        
+
         # Ensure model and data are in float32
         self.model = self.model.float()
-        
+
         # Use automatic mixed precision
         self.scaler = torch.cuda.amp.GradScaler()
-        
+
         self.criterion, self.optimizer = self.get_loss_and_optimizer()
         self.best_metrics = None
 
@@ -107,7 +109,7 @@ class ModelTrainer:
                 loss_sphere = self.criterion(outputs[:, 0], spheres)
                 loss_cylinder = self.criterion(outputs[:, 1], cylinders)
                 loss = loss_sphere + loss_cylinder
-                
+
                 total_loss += loss.item()
 
         avg_loss = total_loss / len(self.dataloader)
@@ -138,7 +140,7 @@ class ModelTrainer:
                 cylinders = cylinders.float().view(-1).to(device)
 
                 self.optimizer.zero_grad()
-                
+
                 # Use automatic mixed precision
                 with torch.cuda.amp.autocast():
                     outputs = self.model(images)
@@ -154,7 +156,8 @@ class ModelTrainer:
                 running_loss += loss.item()
 
                 if (i + 1) % 10 == 0:
-                    logging.info(f"Epoch [{epoch + 1}/{epochs}], Step [{i + 1}/{len(self.dataloader)}], Loss: {running_loss / (i + 1):.4f}")
+                    logging.info(
+                        f"Epoch [{epoch + 1}/{epochs}], Step [{i + 1}/{len(self.dataloader)}], Loss: {running_loss / (i + 1):.4f}")
 
             # Validation
             metrics = self.validate()
@@ -165,7 +168,7 @@ class ModelTrainer:
                 self.best_metrics = metrics
 
             scheduler.step()
-            
+
             # Clear cuda cache between epochs
             torch.cuda.empty_cache()
 

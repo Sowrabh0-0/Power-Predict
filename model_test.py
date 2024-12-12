@@ -77,11 +77,11 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Load the model
-    model_path = "custom_models/custom_model_loss_22.8603.pth"  # Path to the saved model
+    model_path = "./custom_model.pth"  # Path to the saved model
     model = load_model(model_path, device)
 
     # Directory containing images
-    dataset_path = "/home/rage/Downloads/dataset/ODOCS RED REFLEX DATABASE/Choithram Netralaya Data/Images"
+    dataset_path = "./ODOCS RED REFLEX DATABASE/Choithram Netralaya Data/Images"
 
     # Load the images from folders "1", "2", and "3" within the directory
     images_metadata = load_images_from_directory(dataset_path)
