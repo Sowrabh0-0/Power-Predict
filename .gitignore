@@ -10,3 +10,4 @@ venv/
 models/
 custom_models/
 __pycache__/
+/Sowrabh/efficientnet_eye_model_20241215_011938.pth/
